@@ -332,4 +332,691 @@ Malwarebytes standard scan
 </label>
 
 <label class="choice">
-<input id="otherScanCheck" type=
+<input id="otherScanCheck" type="checkbox" name="scan" value="Other">
+Other
+</label>
+
+<label class="choice">
+<input id="noneScan" type="checkbox" name="scan" value="None">
+None
+</label>
+
+</div>
+
+<div id="otherScan" class="detail">
+<label class="title" for="otherScanText">Other scan</label>
+<input id="otherScanText" type="text"
+       placeholder="Name of scan or security tool">
+</div>
+</fieldset>
+
+<fieldset>
+<legend>Scan result</legend>
+
+<div class="choices single">
+
+<label class="choice">
+<input type="radio" name="scanResult" value="No threats found" required>
+No threats found
+</label>
+
+<label class="choice">
+<input type="radio" name="scanResult" value="Something was found">
+Something was found
+</label>
+
+<label class="choice">
+<input type="radio" name="scanResult" value="Scan did not complete">
+Scan did not complete
+</label>
+
+<label class="choice">
+<input type="radio" name="scanResult" value="No scan run">
+No scan run
+</label>
+
+</div>
+
+<div id="scanDetail" class="detail">
+<label class="title" for="scanDetailText">Please describe</label>
+<textarea id="scanDetailText"></textarea>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>Any steps you could not complete?</legend>
+
+<div class="choices">
+
+<label class="choice">
+<input type="radio" name="incomplete" value="None" required>
+None
+</label>
+
+<label class="choice">
+<input type="radio" name="incomplete" value="Yes">
+Yes
+</label>
+
+</div>
+
+<div id="incompleteDetail" class="detail">
+<label class="title" for="incompleteText">Which steps?</label>
+<textarea id="incompleteText"></textarea>
+</div>
+</fieldset>
+
+<button id="reviewButton" type="button">
+Review Results
+</button>
+
+</form>
+
+<section id="review">
+
+<h2>Review Your Results</h2>
+
+<p class="muted">
+Check the answers below. If anything needs to change, select <strong>Edit Answers</strong>.
+</p>
+
+<div id="summary" class="summary"></div>
+
+<div class="instructions">
+
+<strong>When the answers are correct:</strong>
+
+<ol>
+
+<li>
+Click <strong>Copy Results to Clipboard</strong>.
+</li>
+
+<li>
+Open your <strong>personal email account</strong>.
+Do not use your Metaurus email.
+</li>
+
+<li>
+Start a new email to
+<span class="email-address">metaurus.security@gmail.com</span>.
+</li>
+
+<li>
+Use the subject shown below.
+</li>
+
+<li>
+Paste the copied results into the email.
+</li>
+
+<li>
+Attach the photos/screenshots requested in the Device Security Check.
+</li>
+
+<li>
+Check that screenshots do not show unrelated confidential, client, financial or personal information.
+</li>
+
+<li>
+<strong>Complete and send a separate form for each device checked -- one email per device.</strong>
+</li>
+
+</ol>
+
+</div>
+
+<div class="email-info">
+
+<div>
+<strong>To:</strong>
+<span class="email-address">metaurus.security@gmail.com</span>
+</div>
+
+<div>
+<strong>Subject:</strong>
+<span id="subject"></span>
+</div>
+
+</div>
+
+<button id="edit" type="button" class="secondary">
+Edit Answers
+</button>
+
+<button id="copy" type="button">
+Copy Results to Clipboard
+</button>
+
+<div id="status"></div>
+
+</section>
+
+<p class="privacy">
+This page does not send, upload or store your answers. It only formats the answers on your device so you can copy them into a personal email.
+</p>
+
+</section>
+</main>
+
+<script>
+(() => {
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+const form = $('#form');
+const review = $('#review');
+const urgent = $('#urgent');
+
+function selected(name) {
+  return $(`input[name="${name}"]:checked`)?.value || "";
+}
+
+function value(id) {
+  return $('#' + id).value.trim();
+}
+
+const questions = [
+
+  [
+    "signin",
+    "Unexpected sign-in approval or code since October 1?",
+    "No",
+    "Yes",
+    true
+  ],
+
+  [
+    "messages",
+    "Suspicious calls, emails or texts?",
+    "None",
+    "Yes",
+    true
+  ],
+
+  [
+    "remote",
+    "Remote-control programs found?",
+    "None",
+    "Yes",
+    false
+  ],
+
+  [
+    "unfamiliar",
+    "Unfamiliar startup items, files or browser add-ons?",
+    "None",
+    "Yes",
+    false
+  ]
+
+];
+
+const holder = $('#securityQuestions');
+
+questions.forEach(
+  ([name, title, negative, positive, urgentFlag]) => {
+
+    const block = document.createElement("fieldset");
+
+    block.innerHTML = `
+      <legend>${title}</legend>
+
+      <div class="choices">
+
+        <label class="choice">
+          <input
+            type="radio"
+            name="${name}"
+            value="${negative}"
+            required
+          >
+          ${negative}
+        </label>
+
+        <label class="choice">
+          <input
+            type="radio"
+            name="${name}"
+            value="${positive}"
+          >
+          ${positive}
+        </label>
+
+      </div>
+
+      <div id="${name}Detail" class="detail">
+
+        <label
+          class="title"
+          for="${name}Text"
+        >
+          Please describe
+        </label>
+
+        <textarea id="${name}Text"></textarea>
+
+      </div>
+    `;
+
+    holder.appendChild(block);
+
+    $$(`input[name="${name}"]`).forEach(input => {
+
+      input.addEventListener("change", () => {
+
+        $('#' + name + 'Detail')
+          .classList.toggle(
+            "show",
+            selected(name) === positive
+          );
+
+        if (urgentFlag) {
+          updateUrgent();
+        }
+
+      });
+
+    });
+
+  }
+);
+
+function updateUrgent() {
+
+  const show =
+    selected("signin") === "Yes" ||
+    selected("messages") === "Yes" ||
+    selected("scanResult") === "Something was found";
+
+  urgent.classList.toggle("show", show);
+
+}
+
+$('#deviceType').addEventListener(
+  "change",
+  event => {
+
+    $('#otherDevice')
+      .classList.toggle(
+        "show",
+        event.target.value === "Other"
+      );
+
+  }
+);
+
+$('#otherScanCheck').addEventListener(
+  "change",
+  event => {
+
+    $('#otherScan')
+      .classList.toggle(
+        "show",
+        event.target.checked
+      );
+
+  }
+);
+
+$('#noneScan').addEventListener(
+  "change",
+  event => {
+
+    if (event.target.checked) {
+
+      $$('input[name="scan"]').forEach(box => {
+
+        if (box !== event.target) {
+          box.checked = false;
+        }
+
+      });
+
+      $('#otherScan').classList.remove("show");
+
+    }
+
+  }
+);
+
+$$('input[name="scan"]:not(#noneScan)')
+  .forEach(box => {
+
+    box.addEventListener(
+      "change",
+      () => {
+
+        if (box.checked) {
+          $('#noneScan').checked = false;
+        }
+
+      }
+    );
+
+  });
+
+$$('input[name="scanResult"]')
+  .forEach(input => {
+
+    input.addEventListener(
+      "change",
+      () => {
+
+        const result =
+          selected("scanResult");
+
+        $('#scanDetail')
+          .classList.toggle(
+            "show",
+            result === "Something was found" ||
+            result === "Scan did not complete"
+          );
+
+        updateUrgent();
+
+      }
+    );
+
+  });
+
+$$('input[name="incomplete"]')
+  .forEach(input => {
+
+    input.addEventListener(
+      "change",
+      () => {
+
+        $('#incompleteDetail')
+          .classList.toggle(
+            "show",
+            selected("incomplete") === "Yes"
+          );
+
+      }
+    );
+
+  });
+
+function buildResults() {
+
+  let scans =
+    $$('input[name="scan"]:checked')
+      .map(box => box.value);
+
+  if (
+    scans.includes("Other") &&
+    value("otherScanText")
+  ) {
+
+    scans =
+      scans.map(scan =>
+
+        scan === "Other"
+
+          ? "Other: " +
+            value("otherScanText")
+
+          : scan
+
+      );
+
+  }
+
+  function answerWithDetails(name) {
+
+    const answer =
+      selected(name);
+
+    const description =
+      value(name + "Text");
+
+    return (
+      answer +
+      (
+        answer === "Yes" &&
+        description
+
+          ? " -- " + description
+
+          : ""
+      )
+    );
+
+  }
+
+  let deviceType =
+    $('#deviceType').value;
+
+  if (
+    deviceType === "Other" &&
+    value("otherDeviceText")
+  ) {
+
+    deviceType =
+      "Other: " +
+      value("otherDeviceText");
+
+  }
+
+  const scanResult =
+    selected("scanResult");
+
+  const body =
+`Name: ${value("name")}
+Device: ${value("device")}
+Work or personal: ${selected("ownership")}
+Device type: ${deviceType}
+
+Unexpected sign-in approval/code since October 1: ${answerWithDetails("signin")}
+
+Suspicious calls, emails or texts: ${answerWithDetails("messages")}
+
+Remote-control programs found: ${answerWithDetails("remote")}
+
+Unfamiliar startup items, files or browser add-ons: ${answerWithDetails("unfamiliar")}
+
+Security scan(s): ${scans.join(", ")}
+
+Scan result: ${scanResult}${
+  (
+    scanResult === "Something was found" ||
+    scanResult === "Scan did not complete"
+  ) &&
+  value("scanDetailText")
+
+    ? " -- " +
+      value("scanDetailText")
+
+    : ""
+}
+
+Steps I couldn't complete: ${selected("incomplete")}${
+  selected("incomplete") === "Yes" &&
+  value("incompleteText")
+
+    ? " -- " +
+      value("incompleteText")
+
+    : ""
+}`;
+
+  const subject =
+    `Device Check - ${value("name")} - ${value("device")}`;
+
+  return {
+    subject,
+    body
+  };
+
+}
+
+$('#reviewButton')
+  .addEventListener(
+    "click",
+    () => {
+
+      if (!form.reportValidity()) {
+        return;
+      }
+
+      const scans =
+        $$('input[name="scan"]:checked');
+
+      if (!scans.length) {
+
+        alert(
+          "Select at least one scan option, including None if no scan was run."
+        );
+
+        return;
+
+      }
+
+      if (
+        $('#deviceType').value === "Other" &&
+        !value("otherDeviceText")
+      ) {
+
+        alert(
+          "Describe the other device type."
+        );
+
+        $('#otherDeviceText').focus();
+
+        return;
+
+      }
+
+      if (
+        $('#otherScanCheck').checked &&
+        !value("otherScanText")
+      ) {
+
+        alert(
+          "Identify the other scan or security tool."
+        );
+
+        $('#otherScanText').focus();
+
+        return;
+
+      }
+
+      const results =
+        buildResults();
+
+      $('#summary').textContent =
+        results.body;
+
+      $('#subject').textContent =
+        results.subject;
+
+      form.classList.add("hide");
+
+      review.classList.add("show");
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+
+    }
+  );
+
+$('#edit')
+  .addEventListener(
+    "click",
+    () => {
+
+      review.classList.remove("show");
+
+      form.classList.remove("hide");
+
+      $('#status').textContent = "";
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+
+    }
+  );
+
+$('#copy')
+  .addEventListener(
+    "click",
+    async () => {
+
+      const results =
+        buildResults();
+
+      try {
+
+        await navigator.clipboard
+          .writeText(results.body);
+
+        $('#status').textContent =
+          "Copied. Open your personal email, paste the results, attach the requested screenshots, and send to metaurus.security@gmail.com.";
+
+      }
+
+      catch (error) {
+
+        const temp =
+          document.createElement(
+            "textarea"
+          );
+
+        temp.value =
+          results.body;
+
+        temp.style.position =
+          "fixed";
+
+        temp.style.left =
+          "-9999px";
+
+        document.body
+          .appendChild(temp);
+
+        temp.focus();
+        temp.select();
+
+        let copied = false;
+
+        try {
+
+          copied =
+            document.execCommand(
+              "copy"
+            );
+
+        }
+
+        catch (copyError) {
+
+          copied = false;
+
+        }
+
+        temp.remove();
+
+        $('#status').textContent =
+          copied
+
+            ? "Copied. Open your personal email, paste the results, attach the requested screenshots, and send to metaurus.security@gmail.com."
+
+            : "Automatic copying was blocked. Select the results above, copy them manually, and paste them into your personal email.";
+
+      }
+
+    }
+  );
+
+})();
+</script>
+
+</body>
+</html>
